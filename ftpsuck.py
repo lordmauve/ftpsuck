@@ -208,9 +208,12 @@ def suck(rule):
         rule.local_path.mkdir()
 
     loop = asyncio.get_event_loop()
+    start = time.time()
     failures = loop.run_until_complete(download(rule))
     if failures:
         sys.exit(f"Encountered {failures} failures")
+    end = time.time()
+    print(f"Mirroring completed in {end - start:.1f}s")
 
 
 parser = argparse.ArgumentParser()
