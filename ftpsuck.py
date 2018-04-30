@@ -1,4 +1,5 @@
 """Recursive downloader for FTP."""
+import sys
 import os.path
 import argparse
 import configparser
@@ -164,14 +165,14 @@ async def download(rule):
     workers = [loop.create_task(download_worker(i + 1, rule, queue)) for i in range(rule.parallel)]
     tasks = [scanner] + workers
 
-    while True:
-        done, pending = await asyncio.wait(tasks, return_when=concurrent.futures.FIRST_EXCEPTION)
-        if pending:
-            # If we still have pending tasks then at least one worker died with an exception
-            # We can cancel the others
-            break
+    done, pending = await asyncio.wait(tasks, return_when=concurrent.futures.FIRST_EXCEPTION)
+    if pending:
+        # If we still have pending tasks then at least one worker died with an exception
+        # We can cancel the others
         for p in pending:
             p.cancel()
+        done, pending = await asyncio.wait(tasks)
+        assert not pending
     return sum(w.result() for w in done)
 
 
@@ -198,6 +199,7 @@ async def scan_remote(rule, queue):
             await queue.put((path, local, info))
     for _ in range(rule.parallel):
         await queue.put(None)
+    return 0
 
 
 def suck(rule):
@@ -206,7 +208,9 @@ def suck(rule):
         rule.local_path.mkdir()
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(download(rule))
+    failures = loop.run_until_complete(download(rule))
+    if failures:
+        sys.exit(f"Encountered {failures} failures")
 
 
 parser = argparse.ArgumentParser()
