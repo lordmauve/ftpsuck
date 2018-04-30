@@ -1,0 +1,4 @@
+aioftp==0.10.1
+attrs==17.4.0
+asyncio-contextmanager==1.0.1
+aiofiles==0.3.2
